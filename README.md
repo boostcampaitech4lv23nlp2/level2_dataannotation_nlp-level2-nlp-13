@@ -25,7 +25,7 @@ Relation set의 구성 및 정의, 가이드라인 작성, 파일럿 및 메인 
 
 ---
 
-## How to Use
+## Usage
 
 ### tagtog의 json file을 csv로 변환
 
@@ -71,6 +71,17 @@ Relation set의 구성 및 정의, 가이드라인 작성, 파일럿 및 메인 
 3. python label_to_num.py 실행
 
 ```
+
+<br/>
+
+### Train-Inference
+
+```
+$ cd src
+$ python main.py -c base_config
+```
+
+<br/>
 
 ### 코드 기준 파일 구조
 
