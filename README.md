@@ -27,7 +27,7 @@ Relation set의 구성 및 정의, 가이드라인 작성, 파일럿 및 메인 
 
 ## How to Use
 
-### tagtog의 json file을 csv로 변환하는 법
+### tagtog의 json file을 csv로 변환
 
 ```
 @kimbyeolhee
@@ -45,7 +45,7 @@ Relation set의 구성 및 정의, 가이드라인 작성, 파일럿 및 메인 
 
 <br/>
 
-### tagtog_csv 파일들의 라벨과 entity pair 확인하는 법
+### tagtog_csv 파일들의 라벨과 entity pair 확인
 
 ```
 @ezez-refer
@@ -60,7 +60,7 @@ Relation set의 구성 및 정의, 가이드라인 작성, 파일럿 및 메인 
 
 <br/>
 
-### 메인 태깅 후 annotator로 참여한 라벨을 불러오고 iaa를 위해 label을 num 값으로 변경하는 법
+### 메인 태깅 후 annotator로 참여한 라벨을 불러오고 iaa를 위해 label을 num 값으로 변경
 
 ```
 @ezez-refer
