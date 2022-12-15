@@ -4,11 +4,10 @@ import logging
 import pytorch_lightning as pl
 import pytz
 import torch
-from pytorch_lightning.loggers import WandbLogger
-
 import wandb
 from data_loader.data_loaders import KfoldDataloader
 from model import model as module_arch
+from pytorch_lightning.loggers import WandbLogger
 from utils import logger, utils
 
 
@@ -25,7 +24,7 @@ def train(config):
         dataloader, KfoldDataloader
     ), "Check your config again: Make sure `k_fold.use_k_fold` is compatible with `dataloader.architecture`"
 
-    wandb_logger = WandbLogger(log_model="all")
+    wandb_logger = WandbLogger()
     save_path = f"{config.path.save_path}{config.model.name}_maxEpoch{config.train.max_epoch}_batchSize{config.train.batch_size}_{wandb_logger.experiment.name}/"
     wandb_logger.experiment.config.update({"save_dir": save_path})
     trainer = pl.Trainer(
