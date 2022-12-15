@@ -24,9 +24,9 @@ def inference(args, config):
     output_prob = np.concatenate(output_prob, axis=0).tolist()
 
     target_labels = np.array(dataloader.predict_dataset[:][-1])
-    print("micro f1 score : ", loss_module.klue_re_micro_f1(pred_answer, target_labels))
-    print("auprc : ", loss_module.klue_re_auprc(np.array(output_prob), target_labels, 9))
-    print("acc : ", loss_module.accuracy_score(target_labels, pred_answer))
+    print("predict micro f1 : ", loss_module.klue_re_micro_f1(pred_answer, target_labels))
+    print("predict auprc : ", loss_module.klue_re_auprc(np.array(output_prob), target_labels, 9))
+    print("predict acc : ", loss_module.accuracy_score(target_labels, pred_answer))
 
     pred_answer = utils.num_to_label(pred_answer)
 
