@@ -1,4 +1,4 @@
-# Data Annotation for RE Wrap Up
+# Data Annotation for RE Task
 
 ## 프로젝트 개요
 본 프로젝트는 ‘대한민국 대통령’ 이라는 주제에서 도출된 키워드들을 위키피디아 문서 제목으로 설정하여 수집한 데이터를 관계 추출 테스크 데이터셋으로 제작하였습니다. <br/>
