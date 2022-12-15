@@ -200,6 +200,7 @@ save_models/
 saved_models/
 config/*
 !src/config/base_config.yaml
+src/config/*.yaml
 outputs/
 
 prediction/
