@@ -4,6 +4,7 @@ from copy import deepcopy
 from itertools import cycle
 
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 files_path = "data/main_tagging_data/"
 save_path = "src/data/raw_data/"
@@ -46,7 +47,17 @@ main_df["final_num_label"] = final_labels
 main_df["label"] = main_df["final_num_label"].map(num_label_to_en)
 main_df = main_df[["id", "sentence", "subject_entity", "object_entity", "label"]]
 
-# 중복 3번 초과일 경우 3개까지만 사용
+origin_df = main_df.copy()
+# 데이터 셋 train, test, predict 분리 (8:1:1)
+target = origin_df["label"]
+origin_train_df, origin_test_df = train_test_split(origin_df, test_size=0.1, shuffle=True, stratify=target, random_state=42)
+origin_train_df, origin_predict_df = train_test_split(
+    origin_train_df, test_size=1 / 9, shuffle=True, stratify=origin_train_df["label"], random_state=42
+)
+print("원본 데이터셋 : ", len(origin_train_df), len(origin_test_df), len(origin_predict_df))
+
+
+# 중복 3번 초과일 경우 3개까지만 사용하는 데이터셋 생성
 del_idx = []  # 삭제할 인덱스를 담은 리스트
 # 우선 중복인 temp_df 생성
 temp_df = main_df.loc[main_df.duplicated(subset=["sentence"])]
@@ -71,7 +82,6 @@ for sent in over_3_sents:
     # 다행히 Entity type 종류가 4개인 경우가 없음
     # entity type 별로 1개 씩만 남기기 (만약 종류가 2종류라면 첫번째꺼에서 1개 더 가져오기)
     descent_entity_type_cnt_key = cycle(sorted(entity_type_cnt_dict, key=lambda x: entity_type_cnt_dict[x], reverse=True))
-    print(descent_entity_type_cnt_key)
 
     for _ in range(3):
         value = next(descent_entity_type_cnt_key)
@@ -85,4 +95,22 @@ for sent in over_3_sents:
 # 삭제할 인덱스를 가진 데이터 삭제
 main_df = main_df[~main_df["id"].isin(del_idx)]
 
-main_df.to_csv(f"{save_path}total_data_ex.csv", index=False)
+# 데이터 셋 train, test, predict 분리 (8:1:1)
+target = main_df["label"]
+train_df, test_df = train_test_split(main_df, test_size=0.1, shuffle=True, stratify=target, random_state=42)
+train_df, predict_df = train_test_split(train_df, test_size=1 / 9, shuffle=True, stratify=train_df["label"], random_state=42)
+
+print("중복 제거 데이터셋", len(train_df), len(test_df), len(predict_df))
+
+
+# 중복 제거 데이터셋 저장
+main_df.to_csv(f"{save_path}total_data.rm_duplicated.csv", index=False)
+train_df.to_csv(f"{save_path}train.rm_duplicated.csv", index=False)
+test_df.to_csv(f"{save_path}test.rm_duplicated.csv", index=False)
+predict_df.to_csv(f"{save_path}predict.rm_duplicated.csv", index=False)
+
+# 제거하지 않은 origin 데이터셋 저장
+origin_df.to_csv(f"{save_path}total_data.csv", index=False)
+origin_train_df.to_csv(f"{save_path}train.csv", index=False)
+origin_test_df.to_csv(f"{save_path}test.csv", index=False)
+origin_predict_df.to_csv(f"{save_path}predict.csv", index=False)
