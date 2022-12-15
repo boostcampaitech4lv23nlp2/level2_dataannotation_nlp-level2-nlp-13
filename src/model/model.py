@@ -4,24 +4,22 @@ from copy import deepcopy
 from os import path
 from typing import Any, Dict, List, Optional, Type
 
+import model.loss as loss_module
 import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchmetrics
+import utils
+from data_loader.data_loaders import BaseKFoldDataModule, KfoldDataloader
 from pytorch_lightning.loops.fit_loop import FitLoop
 from pytorch_lightning.loops.loop import Loop
 from pytorch_lightning.trainer.states import TrainerFn
 from torch.optim.lr_scheduler import ExponentialLR, LambdaLR, StepLR
 from torchmetrics.classification.accuracy import Accuracy
-from transformers import AutoModelForSequenceClassification
-from transformers import AutoConfig, RobertaModel
+from transformers import AutoConfig, AutoModelForSequenceClassification, RobertaModel
 from transformers.models.roberta.modeling_roberta import RobertaPreTrainedModel
-
-import model.loss as loss_module
-import utils
-from data_loader.data_loaders import BaseKFoldDataModule, KfoldDataloader
 
 warnings.filterwarnings("ignore")
 
@@ -33,9 +31,10 @@ class BaseModel(pl.LightningModule):
         self.config = config
         self.model_name = self.config.model.name
         self.lr = self.config.train.learning_rate
+        self.num_labels = 9
         self.plm = AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=self.model_name,
-            num_labels=9,
+            num_labels=self.num_labels,
             hidden_dropout_prob=0.1,
             attention_probs_dropout_prob=0.1,
         )
@@ -83,7 +82,7 @@ class BaseModel(pl.LightningModule):
         self.log("train_loss", loss, on_step=True, prog_bar=True)
 
         pred = {"label_ids": labels.detach().cpu().numpy(), "predictions": logits.detach().cpu().numpy()}
-        metrics = loss_module.compute_metrics(pred)
+        metrics = loss_module.compute_metrics(pred, self.num_labels)
         self.log("train_f1", metrics["micro f1 score"], on_step=True, on_epoch=False, prog_bar=True)
         self.log("train_auprc", metrics["auprc"], on_step=True, on_epoch=False, prog_bar=True)
         self.log("train_acc", metrics["accuracy"], on_step=True, on_epoch=False, prog_bar=True)
@@ -97,7 +96,7 @@ class BaseModel(pl.LightningModule):
         self.log("val_loss", loss, on_step=self.config.utils.on_step, on_epoch=True, prog_bar=True)
 
         pred = {"label_ids": labels.detach().cpu().numpy(), "predictions": logits.detach().cpu().numpy()}
-        metrics = loss_module.compute_metrics(pred)
+        metrics = loss_module.compute_metrics(pred, self.num_labels)
         self.log("val_f1", metrics["micro f1 score"], on_step=self.config.utils.on_step, on_epoch=True, prog_bar=True)
         self.log("val_auprc", metrics["auprc"], on_step=self.config.utils.on_step, on_epoch=True, prog_bar=True)
         self.log("val_acc", metrics["accuracy"], on_step=self.config.utils.on_step, on_epoch=True, prog_bar=True)
@@ -120,7 +119,7 @@ class BaseModel(pl.LightningModule):
         logits = self(tokens)
 
         pred = {"label_ids": labels.detach().cpu().numpy(), "predictions": logits.detach().cpu().numpy()}
-        metrics = loss_module.compute_metrics(pred)
+        metrics = loss_module.compute_metrics(pred, self.num_labels)
 
         self.log(f"test_f1", metrics["micro f1 score"], on_step=self.config.utils.on_step, on_epoch=True, prog_bar=True)
         self.log(f"test_auprc", metrics["auprc"], on_step=self.config.utils.on_step, on_epoch=True, prog_bar=True)
@@ -154,13 +153,9 @@ class BaseModel(pl.LightningModule):
             optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.config.train.scheduler == "StepLR":
-            scheduler = torch.optim.lr_scheduler.StepLR(
-                optimizer, step_size=10, gamma=0.5
-            )
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
         elif self.config.train.scheduler == "LambdaLR":
-            scheduler = torch.optim.lr_scheduler.LambdaLR(
-                optimizer, lr_lambda=lambda epoch: 0.95**epoch
-            )
+            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 0.95**epoch)
 
         return [optimizer], [scheduler]
 
@@ -297,11 +292,7 @@ class RobertaClassificationHead(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        classifier_dropout = (
-            config.classifier_dropout
-            if config.classifier_dropout is not None
-            else config.hidden_dropout_prob
-        )
+        classifier_dropout = config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         self.dropout = nn.Dropout(classifier_dropout)
         self.out_proj = nn.Linear(config.hidden_size, config.num_labels)
 
@@ -324,10 +315,10 @@ class AuxiliaryClassificationRobertaForSequenceClassification(RobertaPreTrainedM
         self.config = config
 
         self.roberta = RobertaModel(config, add_pooling_layer=False)
-        c1 = AutoConfig.from_pretrained('klue/roberta-large', num_labels=2)
-        c2 = AutoConfig.from_pretrained('klue/roberta-large', num_labels=9)
-        self.is_relation_classifier = RobertaClassificationHead(c1)  
-        self.classifier = RobertaClassificationHead(c2)  
+        c1 = AutoConfig.from_pretrained("klue/roberta-large", num_labels=2)
+        c2 = AutoConfig.from_pretrained("klue/roberta-large", num_labels=9)
+        self.is_relation_classifier = RobertaClassificationHead(c1)
+        self.classifier = RobertaClassificationHead(c2)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -346,9 +337,7 @@ class AuxiliaryClassificationRobertaForSequenceClassification(RobertaPreTrainedM
         return_dict=None,
     ):
 
-        return_dict = (
-            return_dict if return_dict is not None else self.config.use_return_dict
-        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         outputs = self.roberta(
             input_ids,
@@ -363,12 +352,12 @@ class AuxiliaryClassificationRobertaForSequenceClassification(RobertaPreTrainedM
         )
         sequence_output = outputs[0]
 
-        is_relation_logits = self.is_relation_classifier(sequence_output)  
-        logits = self.classifier(sequence_output)  
+        is_relation_logits = self.is_relation_classifier(sequence_output)
+        logits = self.classifier(sequence_output)
 
         loss = 0 if labels is not None else None
-        is_relation_output = (is_relation_logits,) + outputs[2:]  
-        output = (logits,) + outputs[2:]  
+        is_relation_output = (is_relation_logits,) + outputs[2:]
+        output = (logits,) + outputs[2:]
 
         return is_relation_output, output
 
@@ -376,24 +365,21 @@ class AuxiliaryClassificationRobertaForSequenceClassification(RobertaPreTrainedM
 class AuxiliaryClassificationRobertaModel(BaseModel):
     def __init__(self, config, new_vocab_size):
         super().__init__(config, new_vocab_size)
-        self.plm = AuxiliaryClassificationRobertaForSequenceClassification.from_pretrained(
-            pretrained_model_name_or_path="klue/roberta-large"
-        )
-        self.alpha = 0.5 # is_relation
+        self.plm = AuxiliaryClassificationRobertaForSequenceClassification.from_pretrained(pretrained_model_name_or_path="klue/roberta-large")
+        self.alpha = 0.5  # is_relation
         self.beta = 0.5
-    
-    def forward(self, x): 
+
+    def forward(self, x):
         input_ids, attention_mask = x
-        outputs= self.plm(input_ids=input_ids, attention_mask=attention_mask)
+        outputs = self.plm(input_ids=input_ids, attention_mask=attention_mask)
         is_relation_output, output = outputs[0][0], outputs[1][0]
         return is_relation_output, output
 
-
     def training_step(self, batch, batch_idx):
         tokens, labels, is_relation_labels = batch
-        input_ids= tokens['input_ids'] 
-        attention_mask =  tokens['attention_mask']
-        
+        input_ids = tokens["input_ids"]
+        attention_mask = tokens["attention_mask"]
+
         is_relation_logits, logits = self((input_ids, attention_mask))
 
         is_relation_loss = self.loss_func(is_relation_logits, is_relation_labels.long(), self.config)
@@ -404,24 +390,24 @@ class AuxiliaryClassificationRobertaModel(BaseModel):
         self.log("train_final_loss", final_loss, on_step=True, prog_bar=True)
 
         pred = {"label_ids": labels.detach().cpu().numpy(), "predictions": logits.detach().cpu().numpy()}
-        metrics = loss_module.compute_metrics(pred)
+        metrics = loss_module.compute_metrics(pred, self.num_labels)
         self.log("train_f1", metrics["micro f1 score"], on_step=True, prog_bar=True)
         self.log("train_auprc", metrics["auprc"], on_step=True, prog_bar=True)
         self.log("train_acc", metrics["accuracy"], on_step=True, prog_bar=True)
 
-        return final_loss   
+        return final_loss
 
-    def validation_step(self, batch, batch_idx): 
-        tokens, labels, is_relation_labels  = batch
-        input_ids= tokens['input_ids']
-        attention_mask =  tokens['attention_mask']
+    def validation_step(self, batch, batch_idx):
+        tokens, labels, is_relation_labels = batch
+        input_ids = tokens["input_ids"]
+        attention_mask = tokens["attention_mask"]
 
         is_relation_logits, logits = self((input_ids, attention_mask))
 
         loss = self.loss_func(logits, labels.long(), self.config)
 
         pred = {"label_ids": labels.detach().cpu().numpy(), "predictions": logits.detach().cpu().numpy()}
-        metrics = loss_module.compute_metrics(pred)
+        metrics = loss_module.compute_metrics(pred, self.num_labels)
         self.log("val_f1", metrics["micro f1 score"], on_step=True, prog_bar=True)
         self.log("val_auprc", metrics["auprc"], on_step=True, prog_bar=True)
         self.log("val_acc", metrics["accuracy"], on_step=True, prog_bar=True)
@@ -433,16 +419,16 @@ class AuxiliaryClassificationRobertaModel(BaseModel):
             self.valid_preds = np.concatenate((self.valid_preds, pred["predictions"]), axis=0)
             self.valid_labels = np.concatenate((self.valid_labels, pred["label_ids"]), axis=0)
 
-        return loss   
+        return loss
 
     def test_step(self, batch, batch_idx):
-        tokens, labels, is_relation_labels  = batch
-        input_ids= tokens['input_ids']
-        attention_mask =  tokens['attention_mask']
+        tokens, labels, is_relation_labels = batch
+        input_ids = tokens["input_ids"]
+        attention_mask = tokens["attention_mask"]
         is_relation_logits, logits = self((input_ids, attention_mask))
 
         pred = {"label_ids": labels.detach().cpu().numpy(), "predictions": logits.detach().cpu().numpy()}
-        metrics = loss_module.compute_metrics(pred)
+        metrics = loss_module.compute_metrics(pred, self.num_labels)
         self.log("test_f1", metrics["micro f1 score"], on_step=True, prog_bar=True)
         self.log("test_auprc", metrics["auprc"], on_step=True, prog_bar=True)
         self.log("test_acc", metrics["accuracy"], on_step=True, prog_bar=True)
@@ -455,9 +441,9 @@ class AuxiliaryClassificationRobertaModel(BaseModel):
             self.test_labels = np.concatenate((self.test_labels, pred["label_ids"]), axis=0)
 
     def predict_step(self, batch, batch_idx):
-        tokens, _ , _ = batch
-        input_ids= tokens['input_ids']
-        attention_mask =  tokens['attention_mask']
+        tokens, _, _ = batch
+        input_ids = tokens["input_ids"]
+        attention_mask = tokens["attention_mask"]
         is_relation_logits, logits = self((input_ids, attention_mask))
 
         self.output_pred = np.argmax(logits.detach().cpu().numpy(), axis=-1)

@@ -1,7 +1,7 @@
 path:
-  train_path: ./data/raw_data/total.csv # ./data/preprocessed_data/train.typed_entity_marker.csv
-  test_path: ./data/raw_data/total.csv # ./data/preprocessed_data/train.typed_entity_marker.csv
-  predict_path: ./data/raw_data/total.csv # ./data/preprocessed_data/test.typed_entity_marker.csv
+  train_path: ./data/raw_data/train.csv # ./data/raw_data/train.rm_duplicated.csv 
+  test_path: ./data/raw_data/test.csv # ./data/raw_data/test.rm_duplicated.csv 
+  predict_path: ./data/raw_data/predict.csv # ./data/raw_data/predict.rm_duplicated.csv 
   save_path: saved_models/
   resume_path: # checkpoint path for resuming training
 
@@ -11,11 +11,11 @@ data_preprocess:
 dataloader:
   shuffle: True
   train_ratio: 0.8
-  architecture:  BaseDataloader # AuxiliaryDataloader
+  architecture:  AuxiliaryDataloader # BaseDataloader 
 
 model:
   name: klue/roberta-large
-  architecture: BaseModel # AuxiliaryClassificationRobertaModel
+  architecture: AuxiliaryClassificationRobertaModel # BaseModel
 
 tokenizer:
   new_tokens: []
@@ -56,4 +56,4 @@ wandb:
   team_account_name: next-level-potato # 팀 계정
   project_repo: RE  # 프로젝트 레포 이름
   name: kbh # 실험자 명
-  info: dataset_test # 실험명
+  info: 2022-12-15-data_annotation # 실험명
