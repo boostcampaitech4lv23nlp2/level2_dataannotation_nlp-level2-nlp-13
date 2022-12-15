@@ -53,14 +53,14 @@ def label_to_num(df):
 
 
 # csv 파일 로드
-annotator = "lwj"
+annotator = "jjn"
 main_tagging_path = f"./data/main_tagging_data/NLP13-main_tagging_{annotator}.csv"
 save_file_path = (
-    f"./data/main_tagging_data/NLP13-main_tagging_{annotator}.label_to_num.csv"
+    f"./data/main_tagging_data/NLP13-main_tagging-label_to_num_{annotator}.csv"
 )
 
 df = pd.read_csv(main_tagging_path)
-# df = df.drop("Unnamed: 8", axis=1)  # 불필요한 컬럼 삭제
+df = df.drop("Unnamed: 8", axis=1)  # 불필요한 컬럼 삭제
 
 # label_ 컬럼에 값이 없는 경우 label 컬럼의 값을 복사
 df.label_ = df.label_.fillna("empty")
