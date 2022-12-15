@@ -1,0 +1,4 @@
+id,sentence,subject,object,label,annotator
+정치_0,"철학자 플라톤은 정부를 군주정과 과두정, 금권정, 민주정으로 분류했다.","{'text': '플라톤', 'start_idx': 4, 'end_idx': 6, 'entity_type': 'PER'}","{'text': '철학자', 'start_idx': 0, 'end_idx': 2, 'entity_type': 'POH'}",per:title,김별희
+정치_1,‘정치’(政治)가 politics의 번역어로 쓰인 오래된 예로는 위원의 《해국도지(海國圖志)》(1844년판) 등이 있다.,"{'text': '해국도지', 'start_idx': 41, 'end_idx': 44, 'entity_type': 'POH'}","{'text': '1844년', 'start_idx': 53, 'end_idx': 57, 'entity_type': 'DAT'}",event/artifact:date,김별희
+정치_2,1980년대 이후 포스트모더니즘의 영향으로 정치를 국가의 영역 뿐 아니라 모든 인간 관계에 내재된 권력 관계로 정의하는 경향도 생겼다.,"{'text': '포스트모더니즘', 'start_idx': 10, 'end_idx': 16, 'entity_type': 'POH'}","{'text': '1980년', 'start_idx': 0, 'end_idx': 4, 'entity_type': 'DAT'}",no_relation,김별희
