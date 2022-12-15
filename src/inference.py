@@ -1,9 +1,9 @@
 import os
 
+import model.loss as loss_module
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
-
 from utils import utils
 
 
@@ -16,10 +16,18 @@ def inference(args, config):
     if args.mode in ["all", "a"]:
         model.load_from_checkpoint(config.path.best_model_path)
 
-    output = trainer.predict(model=model, datamodule=dataloader) # https://pytorch-lightning.readthedocs.io/en/stable/api/pytorch_lightning.trainer.trainer.Trainer.html
+    output = trainer.predict(
+        model=model, datamodule=dataloader
+    )  # https://pytorch-lightning.readthedocs.io/en/stable/api/pytorch_lightning.trainer.trainer.Trainer.html
     pred_answer, output_prob = zip(*output)
     pred_answer = np.concatenate(pred_answer).tolist()
     output_prob = np.concatenate(output_prob, axis=0).tolist()
+
+    target_labels = np.array(dataloader.predict_dataset[:][-1])
+    print("micro f1 score : ", loss_module.klue_re_micro_f1(pred_answer, target_labels))
+    print("auprc : ", loss_module.klue_re_auprc(np.array(output_prob), target_labels, 9))
+    print("acc : ", loss_module.accuracy_score(target_labels, pred_answer))
+
     pred_answer = utils.num_to_label(pred_answer)
 
     output = pd.DataFrame(
